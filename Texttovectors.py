@@ -1,7 +1,7 @@
  import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import LabelEncoder
+from sentence_transformers import SentenceTransformer
 from algorithm.csa import CSA
 
 def save_labels_to_csv(data, labels, output_file):
@@ -37,35 +37,22 @@ def run_experiments(args):
     y = data_shuffled['label']
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=True, random_state=42)
 
-    # Convert text columns to TF-IDF vectors
-    text_columns = X_train.select_dtypes(include='object').columns
-    numeric_columns = X_train.select_dtypes(exclude='object').columns
+    # Load Sentence Transformer model
+    model = SentenceTransformer('distilbert-base-nli-mean-tokens')
 
-    # Convert numeric columns to strings
-    X_train[numeric_columns] = X_train[numeric_columns].astype(str)
-    X_test[numeric_columns] = X_test[numeric_columns].astype(str)
-
-    # Concatenate all columns for text vectorization
-    X_train['text_combined'] = X_train.apply(lambda row: ' '.join(row.values.astype(str)), axis=1)
-    X_test['text_combined'] = X_test.apply(lambda row: ' '.join(row.values.astype(str)), axis=1)
-
-    tfidf_vectorizer = TfidfVectorizer()
-    X_train_text = tfidf_vectorizer.fit_transform(X_train['text_combined'])
-    X_test_text = tfidf_vectorizer.transform(X_test['text_combined'])
-
-    # Concatenate TF-IDF vectors with other features
-    X_train_final = pd.concat([X_train.drop(columns=['text_combined']), pd.DataFrame(X_train_text.toarray()), X_train[numeric_columns]], axis=1)
-    X_test_final = pd.concat([X_test.drop(columns=['text_combined']), pd.DataFrame(X_test_text.toarray()), X_test[numeric_columns]], axis=1)
+    # Convert text columns to sentence embeddings
+    X_train_embeddings = model.encode(X_train.values.flatten())
+    X_test_embeddings = model.encode(X_test.values.flatten())
 
     # Initialize CSA algorithm
     csa = CSA(num_iters=args.numIters, num_XGB_models=args.numXGBs,
               confidence_choice=args.confidence_choice, verbose=args.verbose)
 
     # Fit CSA algorithm
-    csa.fit(X_train_final.values, y_train.values)
+    csa.fit(X_train_embeddings, y_train.values)
 
     # Predict labels for the test data
-    predicted_labels = csa.predict(X_test_final.values)
+    predicted_labels = csa.predict(X_test_embeddings)
 
     # Compute prediction accuracy
     accuracy = (predicted_labels == y_test).mean()
