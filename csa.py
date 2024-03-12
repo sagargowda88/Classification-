@@ -52,6 +52,7 @@ class CSA:
         labels = np.where(preds > 0.5, 1, 0)
         return labels
 
+
 # experiment.py
 import os
 import argparse
@@ -61,6 +62,19 @@ from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 import pandas as pd
 from .csa import CSA
+
+def save_labels_to_csv(data, labels, output_file):
+    """
+    Save data with predicted labels to a CSV file.
+
+    Args:
+        data (pandas DataFrame): Input data.
+        labels (numpy array): Predicted labels.
+        output_file (str): Path to save the CSV file.
+    """
+    data_with_labels = data.copy()
+    data_with_labels['predicted_label'] = labels
+    data_with_labels.to_csv(output_file, index=False)
 
 def run_experiments(args):
     """
@@ -116,5 +130,3 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     main(args)
-
-#python experiment.py input.csv output.csv --numIters 5 --numXGBs 10 --confidence_choice ttest --verbose
