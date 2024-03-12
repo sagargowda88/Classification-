@@ -37,16 +37,17 @@ def run_experiments(args):
     y = data_shuffled['label']
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=True, random_state=42)
 
-    # Get only text columns for Sentence Transformer
+    # Convert text columns to full strings
     text_columns = X_train.select_dtypes(include='object').columns
-    print("Text Columns:", text_columns)
+    X_train[text_columns] = X_train[text_columns].astype(str)
+    X_test[text_columns] = X_test[text_columns].astype(str)
 
     # Load Sentence Transformer model
     model = SentenceTransformer(args.sentence_transformer_model)
 
     # Generate embeddings for text data
-    X_train_embeddings = model.encode(X_train[text_columns].values.flatten())
-    X_test_embeddings = model.encode(X_test[text_columns].values.flatten())
+    X_train_embeddings = model.encode(X_train.values.flatten())
+    X_test_embeddings = model.encode(X_test.values.flatten())
 
     # Initialize CSA algorithm
     csa = CSA(num_iters=args.numIters, num_XGB_models=args.numXGBs,
