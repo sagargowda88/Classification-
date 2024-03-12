@@ -115,3 +115,6 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     main(args)
+
+
+# python experiment.py input.csv output.csv --numIters 5 --numXGBs 10 --confidence_choice ttest --verbose
