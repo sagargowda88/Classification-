@@ -5,6 +5,7 @@ from xgboost import XGBClassifier
 from sklearn.metrics import classification_report, confusion_matrix
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
+from sklearn.preprocessing import OneHotEncoder
 
 # Step 1: Load data
 data = pd.read_csv('input.csv')
@@ -12,7 +13,12 @@ data = pd.read_csv('input.csv')
 # Step 2: Split data into train and test sets
 X = data.drop(columns=['target_column'])
 y = data['target_column']
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# One-hot encode the target variable
+encoder = OneHotEncoder(sparse=False)
+y_encoded = encoder.fit_transform(y.values.reshape(-1, 1))
+
+X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
 
 # Step 3: Text preprocessing
 text_column_name = [col for col in X_train.columns if X_train[col].dtype == 'object'][0]  # Find the text column automatically
@@ -48,7 +54,7 @@ print(confusion_matrix(y_test, predictions))
 # Step 8: Output CSV
 # Store predictions in an output CSV file
 output_df = pd.DataFrame({
-    'Predictions': predictions,
-    'Actual_Labels': y_test
+    'Predictions': predictions.argmax(axis=1),
+    'Actual_Labels': y_test.argmax(axis=1)
 })
 output_df.to_csv('output_predictions.csv', index=False)
