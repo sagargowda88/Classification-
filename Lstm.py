@@ -24,9 +24,13 @@ X_combined = pd.concat([
     pd.DataFrame(X_text_vectorized.toarray())
 ], axis=1)
 
+# One-hot encode the target variable
+encoder_y = OneHotEncoder(sparse=False)
+y_encoded = encoder_y.fit_transform(data[['target_column']])
+
 # Split data into features and target
 X = X_combined
-y = data['target_column']
+y = y_encoded
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 # Train XGBoost model
