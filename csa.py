@@ -1,4 +1,4 @@
-# csa.py
+ # csa.py
 import numpy as np
 from sklearn.metrics import accuracy_score
 from xgboost import XGBClassifier
@@ -59,7 +59,8 @@ import logging
 import pickle
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
-from utilities.utils import load_data, save_labels_to_csv
+import pandas as pd
+from .csa import CSA
 
 def run_experiments(args):
     """
@@ -68,8 +69,8 @@ def run_experiments(args):
     Args:
         args (argparse.Namespace): Arguments for running experiments.
     """
-    # Load data and shuffle
-    data = load_data(args.csv_file)
+    # Load CSV data and shuffle
+    data = pd.read_csv(args.csv_file)
     data_shuffled = data.sample(frac=1, random_state=42)
 
     # Split data into train and test sets
@@ -88,7 +89,7 @@ def run_experiments(args):
     predicted_labels = csa.predict(X_test.values)
 
     # Compute prediction accuracy
-    accuracy = accuracy_score(y_test, predicted_labels)
+    accuracy = (predicted_labels == y_test).mean()
     print(f"Prediction Accuracy: {accuracy:.2f}")
 
     # Save data with predicted labels to CSV file
@@ -116,5 +117,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
     main(args)
 
-
-# python experiment.py input.csv output.csv --numIters 5 --numXGBs 10 --confidence_choice ttest --verbose
+#python experiment.py input.csv output.csv --numIters 5 --numXGBs 10 --confidence_choice ttest --verbose
