@@ -53,3 +53,10 @@ results_df.to_csv('predictions.csv', index=False)
 # Generate classification report
 classification_rep = classification_report(true_labels, predicted_labels)
 print(classification_rep)
+
+for class_label, metrics in classification_rep.items():
+    print(f'Class: {class_label}')
+    print(f'Precision: {metrics["precision"]}')
+    print(f'Recall: {metrics["recall"]}')
+    print(f'F1-score: {metrics["f1-score"]}')
+    print()
