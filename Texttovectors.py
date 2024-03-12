@@ -45,13 +45,17 @@ def run_experiments(args):
     X_train[numeric_columns] = X_train[numeric_columns].astype(str)
     X_test[numeric_columns] = X_test[numeric_columns].astype(str)
 
+    # Concatenate all columns for text vectorization
+    X_train['text_combined'] = X_train.apply(lambda row: ' '.join(row.values.astype(str)), axis=1)
+    X_test['text_combined'] = X_test.apply(lambda row: ' '.join(row.values.astype(str)), axis=1)
+
     tfidf_vectorizer = TfidfVectorizer()
-    X_train_text = tfidf_vectorizer.fit_transform(X_train[text_columns].apply(lambda x: ' '.join(x), axis=1))
-    X_test_text = tfidf_vectorizer.transform(X_test[text_columns].apply(lambda x: ' '.join(x), axis=1))
+    X_train_text = tfidf_vectorizer.fit_transform(X_train['text_combined'])
+    X_test_text = tfidf_vectorizer.transform(X_test['text_combined'])
 
     # Concatenate TF-IDF vectors with other features
-    X_train_final = pd.concat([X_train.drop(columns=text_columns), pd.DataFrame(X_train_text.toarray()), X_train[numeric_columns]], axis=1)
-    X_test_final = pd.concat([X_test.drop(columns=text_columns), pd.DataFrame(X_test_text.toarray()), X_test[numeric_columns]], axis=1)
+    X_train_final = pd.concat([X_train.drop(columns=['text_combined']), pd.DataFrame(X_train_text.toarray()), X_train[numeric_columns]], axis=1)
+    X_test_final = pd.concat([X_test.drop(columns=['text_combined']), pd.DataFrame(X_test_text.toarray()), X_test[numeric_columns]], axis=1)
 
     # Initialize CSA algorithm
     csa = CSA(num_iters=args.numIters, num_XGB_models=args.numXGBs,
