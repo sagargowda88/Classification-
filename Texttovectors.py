@@ -38,13 +38,20 @@ def run_experiments(args):
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=True, random_state=42)
 
     # Convert text columns to TF-IDF vectors
+    text_columns = X_train.select_dtypes(include='object').columns
+    numeric_columns = X_train.select_dtypes(exclude='object').columns
+
+    # Convert numeric columns to strings
+    X_train[numeric_columns] = X_train[numeric_columns].astype(str)
+    X_test[numeric_columns] = X_test[numeric_columns].astype(str)
+
     tfidf_vectorizer = TfidfVectorizer()
-    X_train_text = tfidf_vectorizer.fit_transform(X_train.select_dtypes(include='object').apply(lambda x: ' '.join(x), axis=1))
-    X_test_text = tfidf_vectorizer.transform(X_test.select_dtypes(include='object').apply(lambda x: ' '.join(x), axis=1))
+    X_train_text = tfidf_vectorizer.fit_transform(X_train[text_columns].apply(lambda x: ' '.join(x), axis=1))
+    X_test_text = tfidf_vectorizer.transform(X_test[text_columns].apply(lambda x: ' '.join(x), axis=1))
 
     # Concatenate TF-IDF vectors with other features
-    X_train_final = pd.concat([X_train.drop(columns=X_train.select_dtypes(include='object').columns), pd.DataFrame(X_train_text.toarray())], axis=1)
-    X_test_final = pd.concat([X_test.drop(columns=X_test.select_dtypes(include='object').columns), pd.DataFrame(X_test_text.toarray())], axis=1)
+    X_train_final = pd.concat([X_train.drop(columns=text_columns), pd.DataFrame(X_train_text.toarray()), X_train[numeric_columns]], axis=1)
+    X_test_final = pd.concat([X_test.drop(columns=text_columns), pd.DataFrame(X_test_text.toarray()), X_test[numeric_columns]], axis=1)
 
     # Initialize CSA algorithm
     csa = CSA(num_iters=args.numIters, num_XGB_models=args.numXGBs,
