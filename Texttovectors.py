@@ -37,14 +37,24 @@ def run_experiments(args):
     y = data_shuffled['label']
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=True, random_state=42)
 
-    # Convert text columns to vectors
+    # Initialize SentenceTransformer model
     sentence_model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
-    X_train_text_embeddings = sentence_model.encode(X_train['text_column'].tolist())
-    X_test_text_embeddings = sentence_model.encode(X_test['text_column'].tolist())
+
+    # Convert each text column to vectors
+    X_train_text_embeddings = []
+    X_test_text_embeddings = []
+    for column in X_train.select_dtypes(include='object').columns:
+        train_embeddings = sentence_model.encode(X_train[column].tolist())
+        test_embeddings = sentence_model.encode(X_test[column].tolist())
+        X_train_text_embeddings.append(train_embeddings)
+        X_test_text_embeddings.append(test_embeddings)
 
     # Concatenate text embeddings with other features
-    X_train_final = np.concatenate([X_train.drop(columns=['text_column']).values, X_train_text_embeddings], axis=1)
-    X_test_final = np.concatenate([X_test.drop(columns=['text_column']).values, X_test_text_embeddings], axis=1)
+    X_train_final = X_train.drop(columns=X_train.select_dtypes(include='object').columns).values
+    X_test_final = X_test.drop(columns=X_test.select_dtypes(include='object').columns).values
+    for train_embedding, test_embedding in zip(X_train_text_embeddings, X_test_text_embeddings):
+        X_train_final = np.concatenate([X_train_final, train_embedding], axis=1)
+        X_test_final = np.concatenate([X_test_final, test_embedding], axis=1)
 
     # Initialize CSA algorithm
     csa = CSA(num_iters=args.numIters, num_XGB_models=args.numXGBs,
@@ -75,4 +85,3 @@ if __name__ == '__main__':
     parser.add_argument('--verbose', action='store_true', help='verbose True or False')
 
     args = parser.parse_args()
-    run_experiments(args)
