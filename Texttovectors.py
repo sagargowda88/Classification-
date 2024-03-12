@@ -1,7 +1,7 @@
  import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
 from sentence_transformers import SentenceTransformer
+from sklearn.preprocessing import LabelEncoder
 from algorithm.csa import CSA
 
 def save_labels_to_csv(data, labels, output_file):
@@ -37,34 +37,26 @@ def run_experiments(args):
     y = data_shuffled['label']
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=True, random_state=42)
 
-    # Separate numeric and text columns
-    numeric_columns = X_train.select_dtypes(include='number').columns
+    # Get only text columns for Sentence Transformer
     text_columns = X_train.select_dtypes(include='object').columns
+    print("Text Columns:", text_columns)
 
     # Load Sentence Transformer model
-    model = SentenceTransformer('distilbert-base-nli-mean-tokens')
+    model = SentenceTransformer(args.sentence_transformer_model)
 
-    # Convert text columns to sentence embeddings
-    X_train_text_embeddings = model.encode(X_train[text_columns].values.flatten())
-    X_test_text_embeddings = model.encode(X_test[text_columns].values.flatten())
-
-    # Concatenate numeric columns
-    X_train_numeric = X_train[numeric_columns].values
-    X_test_numeric = X_test[numeric_columns].values
-
-    # Concatenate TF-IDF vectors with other features
-    X_train_final = pd.concat([pd.DataFrame(X_train_text_embeddings), pd.DataFrame(X_train_numeric)], axis=1)
-    X_test_final = pd.concat([pd.DataFrame(X_test_text_embeddings), pd.DataFrame(X_test_numeric)], axis=1)
+    # Generate embeddings for text data
+    X_train_embeddings = model.encode(X_train[text_columns].values.flatten())
+    X_test_embeddings = model.encode(X_test[text_columns].values.flatten())
 
     # Initialize CSA algorithm
     csa = CSA(num_iters=args.numIters, num_XGB_models=args.numXGBs,
               confidence_choice=args.confidence_choice, verbose=args.verbose)
 
     # Fit CSA algorithm
-    csa.fit(X_train_final.values, y_train.values)
+    csa.fit(X_train_embeddings, y_train)
 
     # Predict labels for the test data
-    predicted_labels = csa.predict(X_test_final.values)
+    predicted_labels = csa.predict(X_test_embeddings)
 
     # Compute prediction accuracy
     accuracy = (predicted_labels == y_test).mean()
@@ -83,6 +75,7 @@ if __name__ == '__main__':
     parser.add_argument('--csv_file', type=str, default='your_data.csv', help='path to input CSV file')
     parser.add_argument('--output_csv', type=str, default='predicted_labels.csv', help='name of output CSV file')
     parser.add_argument('--verbose', action='store_true', help='verbose True or False')
+    parser.add_argument('--sentence_transformer_model', type=str, default='distilbert-base-nli-mean-tokens', help='pretrained sentence transformer model')
 
     args = parser.parse_args()
     run_experiments(args)
