@@ -37,22 +37,34 @@ def run_experiments(args):
     y = data_shuffled['label']
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=True, random_state=42)
 
+    # Separate numeric and text columns
+    numeric_columns = X_train.select_dtypes(include='number').columns
+    text_columns = X_train.select_dtypes(include='object').columns
+
     # Load Sentence Transformer model
     model = SentenceTransformer('distilbert-base-nli-mean-tokens')
 
     # Convert text columns to sentence embeddings
-    X_train_embeddings = model.encode(X_train.values.flatten())
-    X_test_embeddings = model.encode(X_test.values.flatten())
+    X_train_text_embeddings = model.encode(X_train[text_columns].values.flatten())
+    X_test_text_embeddings = model.encode(X_test[text_columns].values.flatten())
+
+    # Concatenate numeric columns
+    X_train_numeric = X_train[numeric_columns].values
+    X_test_numeric = X_test[numeric_columns].values
+
+    # Concatenate TF-IDF vectors with other features
+    X_train_final = pd.concat([pd.DataFrame(X_train_text_embeddings), pd.DataFrame(X_train_numeric)], axis=1)
+    X_test_final = pd.concat([pd.DataFrame(X_test_text_embeddings), pd.DataFrame(X_test_numeric)], axis=1)
 
     # Initialize CSA algorithm
     csa = CSA(num_iters=args.numIters, num_XGB_models=args.numXGBs,
               confidence_choice=args.confidence_choice, verbose=args.verbose)
 
     # Fit CSA algorithm
-    csa.fit(X_train_embeddings, y_train.values)
+    csa.fit(X_train_final.values, y_train.values)
 
     # Predict labels for the test data
-    predicted_labels = csa.predict(X_test_embeddings)
+    predicted_labels = csa.predict(X_test_final.values)
 
     # Compute prediction accuracy
     accuracy = (predicted_labels == y_test).mean()
