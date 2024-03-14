@@ -3,8 +3,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import classification_report
 from sentence_transformers import SentenceTransformer
-from sklearn.model_selection import GridSearchCV
 from xgboost import XGBClassifier
+import numpy as np
 
 # Load data
 data = pd.read_csv('input.csv')
@@ -14,15 +14,20 @@ categorical_columns = data.select_dtypes(include=['object']).columns
 encoder = LabelEncoder()
 data[categorical_columns] = data[categorical_columns].apply(encoder.fit_transform)
 
-# Use Sentence Transformer for text encoding
+# Use Sentence Transformer for text embedding
 text_column_name = [col for col in data.columns if data[col].dtype == 'object'][0]  # Find the text column automatically
 model = SentenceTransformer('distilbert-base-nli-mean-tokens')  # Choose your desired pre-trained model
-X_text_vectorized = model.encode(data[text_column_name].tolist())
+
+text_embeddings = []
+for text in data[text_column_name]:
+    text_embeddings.append(model.encode([text])[0])
+
+text_embeddings = np.array(text_embeddings)
 
 # Combine numerical, encoded categorical, and text features
 X_combined = pd.concat([
     data.drop(columns=[text_column_name]),
-    pd.DataFrame(X_text_vectorized)
+    pd.DataFrame(text_embeddings)  # Convert embeddings to DataFrame
 ], axis=1)
 
 # Encode the target variable using label encoding
