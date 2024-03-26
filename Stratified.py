@@ -1,8 +1,8 @@
-import pandas as pd
+ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.metrics import classification_report, accuracy_score
 from sklearn.model_selection import StratifiedShuffleSplit
 from xgboost import XGBClassifier
 
@@ -64,11 +64,18 @@ for train_index, test_index in stratified_split.split(X, y):
 final_accuracy = sum(accuracy_scores) / len(accuracy_scores)
 print(f"Final Accuracy: {final_accuracy}")
 
-# Calculate and print the final classification report
-final_classification_report = classification_report(
-    y_true=y,
-    y_pred=predictions,
-    output_dict=False  # Set to True if you want the report as a dictionary
-)
-print("Final Classification Report:")
-print(final_classification_report)
+# Concatenate all splits' predictions and true labels
+all_predictions = []
+all_true_labels = []
+for report in classification_reports:
+    all_predictions.extend(report['predictions'])
+    all_true_labels.extend(report['true_labels'])
+
+# Filter out indices where predictions were wrong
+wrong_prediction_indices = [i for i, (pred, true) in enumerate(zip(all_predictions, all_true_labels)) if pred != true]
+
+# Get rows where predictions were wrong
+wrong_predictions_data = data.iloc[wrong_prediction_indices]
+
+# Save wrong predictions to CSV
+wrong_predictions_data.to_csv('wrong_predictions.csv', index=False)
