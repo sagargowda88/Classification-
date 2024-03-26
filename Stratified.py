@@ -1,4 +1,4 @@
- import pandas as pd
+import pandas as pd
 import xgboost as xgb
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -28,22 +28,21 @@ X_combined = sp.hstack((X_text_tfidf, X_categorical_encoded.reshape(-1, 1)))
 # Split data into train and test sets
 X_train, X_test, y_train, y_test = train_test_split(X_combined, y, test_size=0.2, random_state=42)
 
+# Define XGBoost parameters
+params = {
+    'objective': 'multi:softmax',
+    'num_class': 4,
+    'eval_metric': 'merror',
+}
+
 # Compute class distribution
 class_distribution = y_train.value_counts(normalize=True)
 
 # Calculate scale_pos_weight for each class
 scale_pos_weight = {cls: (1 - freq) / freq for cls, freq in class_distribution.items()}
 
-# Define XGBoost parameters with scale_pos_weight
-params = {
-    'objective': 'multi:softmax',
-    'num_class': 4,
-    'eval_metric': 'merror',
-    'scale_pos_weight': scale_pos_weight
-}
-
-# Convert data into DMatrix format
-dtrain = xgb.DMatrix(X_train, label=y_train)
+# Convert data into DMatrix format and pass scale_pos_weight
+dtrain = xgb.DMatrix(X_train, label=y_train, weight=[scale_pos_weight[label] for label in y_train])
 dtest = xgb.DMatrix(X_test, label=y_test)
 
 # Train XGBoost model
