@@ -1,81 +1,57 @@
  import pandas as pd
+import xgboost as xgb
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import classification_report, accuracy_score
-from sklearn.model_selection import StratifiedShuffleSplit
-from xgboost import XGBClassifier
+from sklearn.metrics import accuracy_score, classification_report
+from sklearn.utils import class_weight
 
-# Load data
-data = pd.read_csv('input.csv')
+# Load data from CSV
+data = pd.read_csv("data.csv")
 
-# Handle categorical features (object type) with label encoding
-categorical_columns = data.select_dtypes(include=['object']).columns
-encoder = LabelEncoder()
-data[categorical_columns] = data[categorical_columns].apply(encoder.fit_transform)
+# Split features and target variable
+X_text = data["text_column"]
+X_categorical = data["categorical_column"]
+y = data["target"]
 
-# Text preprocessing using TF-IDF for text columns
-text_column_name = [col for col in data.columns if data[col].dtype == 'object'][0]  # Find the text column automatically
-vectorizer = TfidfVectorizer(max_features=1000)  # Adjust max_features as needed
-X_text_vectorized = vectorizer.fit_transform(data[text_column_name])
-
-# Combine numerical, encoded categorical, and text features
-X_combined = pd.concat([
-    data.drop(columns=[text_column_name]),
-    pd.DataFrame(X_text_vectorized.toarray())
-], axis=1)
-
-# Encode the target variable using label encoding
+# Label encode categorical features
 label_encoder = LabelEncoder()
-y_encoded = label_encoder.fit_transform(data['target_column'])
+X_categorical_encoded = label_encoder.fit_transform(X_categorical)
 
-# Split data into features and target
-X = X_combined
-y = y_encoded
+# TF-IDF vectorization for text features
+tfidf_vectorizer = TfidfVectorizer(max_features=1000)  # Adjust max_features as needed
+X_text_tfidf = tfidf_vectorizer.fit_transform(X_text)
 
-# Perform stratified sampling with 5 splits to split data into training and testing sets
-stratified_split = StratifiedShuffleSplit(n_splits=5, test_size=0.2, random_state=42)
+# Combine text TF-IDF and categorical features
+import scipy.sparse as sp
+X_combined = sp.hstack((X_text_tfidf, X_categorical_encoded.reshape(-1, 1)))
 
-# Lists to store accuracy scores and classification reports for each split
-accuracy_scores = []
-classification_reports = []
+# Split data into train and test sets
+X_train, X_test, y_train, y_test = train_test_split(X_combined, y, test_size=0.2, random_state=42)
 
-# Iterate over each split
-for train_index, test_index in stratified_split.split(X, y):
-    X_train, X_test = X.iloc[train_index], X.iloc[test_index]
-    y_train, y_test = y[train_index], y[test_index]
-    
-    # Train XGBoost model
-    model = XGBClassifier()
-    model.fit(X_train, y_train)
+# Calculate class weights based on the encoded labels
+class_weights = class_weight.compute_class_weight('balanced', classes=y.unique(), y=y_train)
 
-    # Predictions
-    predictions = model.predict(X_test)
+# Define XGBoost parameters with scale_pos_weight
+params = {
+    'objective': 'multi:softmax',
+    'num_class': 4,
+    'eval_metric': 'merror',
+    'scale_pos_weight': class_weights.tolist()
+}
 
-    # Calculate accuracy
-    accuracy = accuracy_score(y_test, predictions)
-    accuracy_scores.append(accuracy)
+# Convert data into DMatrix format
+dtrain = xgb.DMatrix(X_train, label=y_train)
+dtest = xgb.DMatrix(X_test, label=y_test)
 
-    # Generate classification report
-    report = classification_report(y_test, predictions, output_dict=True)
-    classification_reports.append(report)
+# Train XGBoost model
+num_round = 100
+bst = xgb.train(params, dtrain, num_round)
 
-# Calculate and print the final accuracy
-final_accuracy = sum(accuracy_scores) / len(accuracy_scores)
-print(f"Final Accuracy: {final_accuracy}")
+# Make predictions
+preds = bst.predict(dtest)
 
-# Concatenate all splits' predictions and true labels
-all_predictions = []
-all_true_labels = []
-for report in classification_reports:
-    all_predictions.extend(report['predictions'])
-    all_true_labels.extend(report['true_labels'])
-
-# Filter out indices where predictions were wrong
-wrong_prediction_indices = [i for i, (pred, true) in enumerate(zip(all_predictions, all_true_labels)) if pred != true]
-
-# Get rows where predictions were wrong
-wrong_predictions_data = data.iloc[wrong_prediction_indices]
-
-# Save wrong predictions to CSV
-wrong_predictions_data.to_csv('wrong_predictions.csv', index=False)
+# Evaluate model
+accuracy = accuracy_score(y_test, preds)
+print("Accuracy:", accuracy)
+print("Classification Report:\n", classification_report(y_test, preds))
