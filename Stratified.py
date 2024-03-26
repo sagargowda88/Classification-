@@ -4,7 +4,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import accuracy_score, classification_report
-from sklearn.utils import class_weight
 
 # Load data from CSV
 data = pd.read_csv("data.csv")
@@ -29,15 +28,18 @@ X_combined = sp.hstack((X_text_tfidf, X_categorical_encoded.reshape(-1, 1)))
 # Split data into train and test sets
 X_train, X_test, y_train, y_test = train_test_split(X_combined, y, test_size=0.2, random_state=42)
 
-# Calculate class weights based on the encoded labels
-class_weights = class_weight.compute_class_weight('balanced', classes=y.unique(), y=y_train)
+# Compute class distribution
+class_distribution = y_train.value_counts(normalize=True)
+
+# Calculate scale_pos_weight for each class
+scale_pos_weight = {cls: (1 - freq) / freq for cls, freq in class_distribution.items()}
 
 # Define XGBoost parameters with scale_pos_weight
 params = {
     'objective': 'multi:softmax',
     'num_class': 4,
     'eval_metric': 'merror',
-    'scale_pos_weight': class_weights.tolist()
+    'scale_pos_weight': scale_pos_weight
 }
 
 # Convert data into DMatrix format
