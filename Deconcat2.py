@@ -12,3 +12,20 @@ def split_and_create_dict(concatenated_string):
         result = {col: result.get(col, np.nan) for col in expected_columns}
     
     return result
+
+
+import pandas as pd
+
+# Read the CSV file into a DataFrame
+df = pd.read_csv('your_file.csv')
+
+# Select the two columns to compare
+column1 = 'column_name_1'  # Replace 'column_name_1' with the name of your first column
+column2 = 'column_name_2'  # Replace 'column_name_2' with the name of your second column
+
+# Check similarity and calculate accuracy
+total_rows = len(df)
+matching_rows = (df[column1] == df[column2]).sum()
+accuracy = matching_rows / total_rows * 100
+
+print(f"Accuracy between '{column1}' and '{column2}': {accuracy:.2f}%")
