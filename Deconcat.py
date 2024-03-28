@@ -1,10 +1,20 @@
 import pandas as pd
+import numpy as np
 
 # Read the concatenated CSV file with predictions into a DataFrame
 concatenated_df = pd.read_csv('concatenated_file_with_predictions.csv')
 
+# Function to split concatenated strings into dictionary items
+def split_and_create_dict(concatenated_string):
+    items = concatenated_string.split('\n')
+    result = {}
+    for item in items:
+        key, value = item.split(' = ')
+        result[key.strip()] = np.nan if value.strip().lower() == 'null' else value.strip()
+    return result
+
 # Split the concatenated column back to the original format
-deconcatenated_data = concatenated_df['Concatenated_Column'].str.split('\n').apply(lambda x: dict(item.split('=') for item in x))
+deconcatenated_data = concatenated_df['Concatenated_Column'].apply(split_and_create_dict)
 
 # Create a DataFrame from the deconcatenated data
 deconcatenated_df = pd.DataFrame(deconcatenated_data.tolist())
