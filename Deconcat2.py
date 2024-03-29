@@ -29,3 +29,24 @@ matching_rows = (df[column1] == df[column2]).sum()
 accuracy = matching_rows / total_rows * 100
 
 print(f"Accuracy between '{column1}' and '{column2}': {accuracy:.2f}%")
+
+
+import numpy as np
+
+def split_and_create_dict(concatenated_string):
+    result = {}
+    # Check if the columns are in a different order than expected
+    expected_columns = ['Column A', 'Column B']  # Update this list with your actual column names
+    
+    for line in concatenated_string.split('\n'):
+        for col in expected_columns:
+            if line.strip().startswith(col):
+                key, value = line.split('=', 1)
+                result[key.strip()] = np.nan if value.strip().lower() == 'null' else value.strip()
+                break
+    
+    if list(result.keys()) != expected_columns:
+        # Reorder the dictionary based on the expected column order
+        result = {col: result.get(col, np.nan) for col in expected_columns}
+    
+    return result
